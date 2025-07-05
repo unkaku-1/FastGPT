@@ -10,7 +10,7 @@ services:
     image: pgvector/pgvector:0.8.0-pg15 # docker hub
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
     container_name: pg
-    restart: always
+    restart: unless-stopped
     # ports: # 生产环境建议不要暴露
     #   - 5432:5432
     networks:
@@ -34,7 +34,7 @@ services:
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
     # image: mongo:4.4.29 # cpu不支持AVX时候使用
     container_name: mongo
-    restart: always
+    restart: unless-stopped
     networks:
       - fastgpt
     command: mongod --keyFile /data/mongodb.key --replSet rs0
@@ -78,7 +78,7 @@ services:
     container_name: redis
     networks:
       - fastgpt
-    restart: always
+    restart: unless-stopped
     command: |
       redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
     healthcheck:
@@ -92,7 +92,7 @@ services:
   fastgpt-minio:
     image: minio/minio:latest
     container_name: fastgpt-minio
-    restart: always
+    restart: unless-stopped
     networks:
       - fastgpt
     ports: # comment out if you do not need to expose the port (in production environment, you should not expose the port)
@@ -115,14 +115,14 @@ services:
     image: ghcr.io/labring/fastgpt:v4.10.0-fix # git
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.10.0-fix # 阿里云
     ports:
-      - 3000:3000
+      - 3001:3000
     networks:
       - fastgpt
     depends_on:
       - mongo
       - sandbox
       - pg
-    restart: always
+    restart: unless-stopped
     environment:
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
       - FE_DOMAIN=
@@ -173,7 +173,7 @@ services:
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.10.0-fix # 阿里云
     networks:
       - fastgpt
-    restart: always
+    restart: unless-stopped
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
     image: ghcr.io/labring/fastgpt-mcp_server:v4.10.0-fix # git
@@ -182,14 +182,14 @@ services:
       - 3005:3000
     networks:
       - fastgpt
-    restart: always
+    restart: unless-stopped
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
     image: ghcr.io/labring/fastgpt-plugin:v0.1.2 # git
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.2 # 阿里云
     container_name: fastgpt-plugin
-    restart: always
+    restart: unless-stopped
     networks:
       - fastgpt
     environment:
@@ -256,3 +256,14 @@ services:
       retries: 10
 networks:
   fastgpt:
+
+  tool-api:
+    container_name: tool-api
+    build:
+      context: ../../../tools
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    networks:
+      - fastgpt
